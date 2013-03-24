@@ -1,0 +1,38 @@
+search /^mrb_define_method/
+line_after "}", <<-EOP
+
+static void
+clear_method_cache(mrb_state *mrb)
+{
+  int i;
+  int j;
+  int ilen;
+  int plen;
+  mrb_irep *irep;
+  mrb_value *pool;
+  
+  ilen = mrb->irep_len;
+  for (i = 0; i < ilen; i++) {
+    irep = mrb->irep[i];
+    if (irep->is_method_cache_used) {
+      plen = irep->plen;
+      pool = irep->pool;
+      for (j = 0; j < plen; j++) {
+	if (mrb_tt(pool[j]) == MRB_TT_CACHE_VALUE) {
+	  pool[j].value.p = 0;
+	}
+      }
+      irep->is_method_cache_used = 0;
+    }
+  }
+}
+EOP
+
+search /^mrb_define_method_vm/
+line_after "", <<-EOP
+  if (mrb->is_method_cache_used) {
+    clear_method_cache(mrb);
+    mrb->is_method_cache_used = 0;
+  }
+
+EOP

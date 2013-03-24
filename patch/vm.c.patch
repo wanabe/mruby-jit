@@ -1,0 +1,436 @@
+line_after '#include "opcode.h"', '#include "jit.h"'
+
+search /^stack_extend/
+line_after "}", <<-EOP
+
+void
+mrbjit_stack_extend(mrb_state *mrb, int room, int keep)
+{
+  stack_extend(mrb, room, keep);
+}
+EOP
+
+search /^uvget/
+line_after "}", <<-EOP
+
+mrb_value
+mrb_uvget(mrb_state *mrb, int up, int idx)
+{
+  return uvget(mrb, up, idx);
+}
+EOP
+
+search /^uvset/
+line_after "}", <<-EOP
+
+void
+mrb_uvset(mrb_state *mrb, int up, int idx, mrb_value v)
+{
+  uvset(mrb, up, idx, v);
+}
+EOP
+
+search /^top_env/
+line_after "}", <<-EOP
+
+struct REnv*
+mrbjit_top_env(mrb_state *mrb, struct RProc *proc)
+{
+  return top_env(mrb, proc);
+}
+EOP
+
+search /^cipush/
+line_after /mrb->ci->env = 0;/, "  mrb->ci->jit_entry = NULL;"
+line_after "}", <<-EOP
+
+mrb_callinfo*
+mrbjit_cipush(mrb_state *mrb)
+{
+  return cipush(mrb);
+}
+EOP
+
+search /^cipop/
+line_after "}", <<-EOP
+
+void
+mrbjit_cipop(mrb_state *mrb)
+{
+  cipop(mrb);
+}
+EOP
+
+search /^ecall/
+line_before "", "  int orgdisflg = mrb->compile_info.disable_jit;"
+line_before /^\s*(mrb_run\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+  mrb->compile_info.disable_jit = 1;
+  #{m[1]}
+  mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+line_after "}", <<-EOP
+
+void
+mrbjit_ecall(mrb_state *mrb, int i)
+{
+  ecall(mrb, i);
+}
+EOP
+
+search /^mrb_funcall_with_block/
+line_before /^\s*(val = p->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+    int orgdisflg = mrb->compile_info.disable_jit;
+    mrb->compile_info.disable_jit = 1;
+    #{m[1]}
+    mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+search /^mrb_yield_internal/
+line_before /^\s*(val = p->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+    int orgdisflg = mrb->compile_info.disable_jit;
+    mrb->compile_info.disable_jit = 1;
+    #{m[1]}
+    mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+line_before "typedef enum {", "", 6
+
+search /^localjump_error/
+line_after "}", <<-EOP
+
+void
+mrbjit_localjump_error(mrb_state *mrb, localjump_error_kind kind)
+{
+  localjump_error(mrb, kind);
+}
+EOP
+
+search /^argnum_error/
+line_after "}", <<-'EOP'
+
+void
+mrbjit_argnum_error(mrb_state *mrb, int num)
+{
+  argnum_error(mrb, num);
+}
+
+extern const void *mrbjit_get_curr(mrb_state *);
+extern const void *mrbjit_emit_code(mrb_state *, mrbjit_vmstatus *);
+extern void mrbjit_gen_exit(mrbjit_code_area, mrb_state *, mrb_irep *, mrb_code **);
+extern void mrbjit_gen_jump_block(mrbjit_code_area, void *);
+extern void mrbjit_gen_jmp_patch(mrbjit_code_area, void *, void *);
+
+static inline mrbjit_code_info *
+mrbjit_search_codeinfo_prev_inline(mrbjit_codetab *tab, mrb_code *prev_pc, mrb_code *caller_pc)
+{
+  volatile int i;		/* volatile avoid bug (maybe gcc?) */
+  mrbjit_code_info *entry;
+
+  for (i = 0; i < tab->size; i++) {
+    entry = tab->body + i;
+    if (entry->prev_pc == prev_pc && entry->caller_pc == caller_pc) {
+      return entry;
+    }
+  }
+
+  return NULL;
+}
+
+mrbjit_code_info *
+mrbjit_search_codeinfo_prev(mrbjit_codetab *tab, mrb_code *prev_pc, mrb_code *caller_pc)
+{
+  return mrbjit_search_codeinfo_prev_inline(tab, prev_pc, caller_pc);
+}
+
+static inline mrbjit_code_info *
+add_codeinfo(mrb_state *mrb, mrbjit_codetab *tab)
+{
+  int i;
+  int oldsize;
+  mrbjit_code_info *ele;
+  oldsize = -1;
+
+ retry:
+  if (tab->body == NULL || oldsize >= 0) {
+    oldsize = tab->size;
+    tab->size = tab->size + (tab->size >> 1) + 2;
+    tab->body = mrb_realloc(mrb, tab->body, sizeof(mrbjit_code_info) * tab->size);
+    for (i = oldsize; i < tab->size; i++) {
+      tab->body[i].used = 0;
+    }
+  }
+
+  oldsize = tab->size;
+  for (i = 0; i < tab->size; i++) {
+    ele = tab->body + i;
+    if (ele->used == 0) {
+      return ele;
+    }
+  }
+
+  /* Grow code info table */
+  goto retry;
+}
+
+extern void disasm_irep(mrb_state *, mrb_irep *, mrb_code);
+static inline void *
+mrbjit_dispatch(mrb_state *mrb, mrbjit_vmstatus *status)
+{
+  mrb_irep *irep = *status->irep;
+  mrb_code **ppc = status->pc;
+  mrb_value *regs = *status->regs;
+  size_t n;
+  mrbjit_code_info *ci;
+  mrbjit_code_area cbase;
+  mrb_code *prev_pc;
+  mrb_code *caller_pc;
+  void *(*entry)() = NULL;
+  void *(*prev_entry)() = NULL;
+
+  if (mrb->compile_info.disable_jit) {
+    return status->optable[GET_OPCODE(**ppc)];
+  }
+
+  prev_pc = mrb->compile_info.prev_pc;
+  if (irep->ilen < NO_INLINE_METHOD_LEN) {
+    caller_pc = mrb->ci->pc;
+  }
+  else {
+    caller_pc = NULL;
+    mrb->compile_info.nest_level = 0;
+  }
+
+  cbase = mrb->compile_info.code_base;
+  n = ISEQ_OFFSET_OF(*ppc);
+  if (prev_pc) {
+    ci = mrbjit_search_codeinfo_prev_inline(irep->jit_entry_tab + n, prev_pc, caller_pc);
+  }
+  else {
+    ci = NULL;
+  }
+  if (ci) {
+    if (cbase) {
+      if (ci->used > 0) {
+	mrbjit_gen_jump_block(cbase, ci->entry);
+	cbase = mrb->compile_info.code_base = NULL;
+      }
+    }
+
+    if (cbase == NULL && ci->used > 0) {
+      void *rc;
+      prev_pc = *ppc;
+
+      //printf("%x %x \n", ci->entry, *ppc);
+
+      asm volatile("mov %0, %%ecx\n\t"
+		   "mov %1, %%ebx\n\t"
+		   "mov %2, %%esi\n\t"
+		   :
+		   : "g"(regs),
+		     "g"(status),
+		     "g"(mrb)
+		   : "%ecx",
+		     "%ebx",
+		     "%esi",
+		     "memory");
+
+      asm volatile("call *%0\n\t"
+		   :
+		   : "g"(ci->entry)
+		   : "%edx");
+
+      asm volatile("mov %%eax, %0\n\t"
+		   : "=c"(rc));
+      asm volatile("mov %%edx, %0\n\t"
+		   : "=c"(prev_entry));
+
+      irep = *status->irep;
+      regs = *status->regs;
+      //disasm_irep(mrb, irep, **ppc);
+      n = ISEQ_OFFSET_OF(*ppc);
+      if (irep->ilen < NO_INLINE_METHOD_LEN) {
+	caller_pc = mrb->ci->pc;
+      }
+      else {
+	caller_pc = NULL;
+	mrb->compile_info.nest_level = 0;
+      }
+      if (rc) {
+	mrb->compile_info.prev_pc = *ppc;
+	return rc;
+      }
+      ci = mrbjit_search_codeinfo_prev_inline(irep->jit_entry_tab + n, prev_pc, caller_pc);
+    }
+  }
+
+  if (irep->prof_info[n]++ > COMPILE_THRESHOLD) {
+    //      printf("size %x %x %x\n", irep->jit_entry_tab[n].size, *ppc, prev_pc);
+    if (ci == NULL) {
+      //printf("p %x %x\n", *ppc, prev_pc);
+      ci = add_codeinfo(mrb, irep->jit_entry_tab + n);
+      ci->prev_pc = prev_pc;
+      ci->caller_pc = caller_pc;
+      ci->code_base = mrb->compile_info.code_base;
+      ci->entry = NULL;
+      ci->used = -1;
+    }
+
+    if (ci->used < 0) {
+      entry = mrbjit_emit_code(mrb, status);
+      if (prev_entry && entry) {
+	//printf("patch %x %x \n", prev_entry, entry);
+	cbase = mrb->compile_info.code_base;
+	mrbjit_gen_jmp_patch(cbase, prev_entry, entry);
+      }
+
+      if (entry) {
+	ci->entry = entry;
+	ci->used = 1;
+      }
+      else {
+	/* record contination patch entry */
+	if (cbase) {
+	  ci->entry = mrbjit_get_curr(cbase);
+	}
+	//	printf("set %x %x \n", ci->entry, entry);
+	ci->used = -1;
+	// printf("%x %x %x\n", ci->entry, *ppc, ci);
+      }
+    }
+  }
+
+  if (cbase && entry == NULL) {
+    /* Finish compile */
+    mrbjit_gen_exit(cbase, mrb, irep, ppc);
+    mrb->compile_info.code_base = NULL;
+    mrb->compile_info.nest_level = 0;
+  }
+
+  mrb->compile_info.prev_pc = *ppc;
+
+  return status->optable[GET_OPCODE(**ppc)];
+}
+EOP
+
+search /#ifndef DIRECT_THREADED/
+line_after "", <<-EOP
+/* You can not execute by JIT sorry... */
+EOP
+
+search "#else"
+line_before /#define NEXT /, <<-EOP, 2
+#define NEXT ++pc;goto L_DISPATCH
+#define JUMP goto L_DISPATCH
+EOP
+
+search /^mrb_run/
+line_before "", <<-EOP, 1
+  void *gtptr;			/* Use in NEXT/JUMP */
+
+  mrb->compile_info.nest_level = 0;
+EOP
+line_before "#endif", <<-EOP, 1
+
+  void *gototable[] = {
+    &&L_RAISE, &&L_RETURN, &&L_RESCUE, &&L_SEND, &&L_STOP
+  };
+#endif
+  mrbjit_vmstatus status = {
+    &irep, &proc, &pc, &pool, &syms, &regs, &ai, 
+    optable, gototable, &prev_jmp
+  };
+EOP
+
+search /CASE\(OP_SEND\)/
+line_before "", <<-EOP
+      int rcvoff = GETARG_Bx(*(pc + 1));
+      int mthoff = rcvoff + 1;
+      struct RClass *orecv = pool[rcvoff].value.p;
+EOP
+m = line_before /(\s*)m = mrb_method_search_vm\(/, "      if (c != orecv) {"
+line = @line
+search /^#{m[1]}\}/
+@content[line..@line].each do |l|
+  l.sub! /^      /, "\t"
+end
+
+line_after /^\t\}/, <<EOP
+	else {
+	  mrb->is_method_cache_used = 1;
+	  irep->is_method_cache_used = 1;
+	  pool[rcvoff].value.p = c;
+	  pool[mthoff].value.p = m;
+	}
+      }
+      else {
+	m = pool[mthoff].value.p;
+      }
+EOP
+
+line_after "      if (MRB_PROC_CFUNC_P(m)) {", "        int orgdisflg = mrb->compile_info.disable_jit;"
+line_before /^\s*(result = m->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+        mrb->compile_info.disable_jit = 1;
+        #{m[1]}
+        mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+search "    CASE(OP_CALL) {"
+search "      if (MRB_PROC_CFUNC_P(m)) {"
+line_before /^\s*(recv = m->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+        int orgdisflg = mrb->compile_info.disable_jit;
+        mrb->compile_info.disable_jit = 1;
+        #{m[1]}
+        mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+search "    CASE(OP_SUPER) {"
+search "      if (MRB_PROC_CFUNC_P(m)) {"
+line_before /^\s*(mrb->stack\[0\] = m->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+        int orgdisflg = mrb->compile_info.disable_jit;
+        mrb->compile_info.disable_jit = 1;
+        #{m[1]}
+        mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+search "    CASE(OP_TAILCALL) {"
+search "      if (MRB_PROC_CFUNC_P(m)) {"
+line_before /^\s*(mrb->stack\[0\] = m->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+        int orgdisflg = mrb->compile_info.disable_jit;
+        mrb->compile_info.disable_jit = 1;
+        #{m[1]}
+        mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+search "      if (MRB_PROC_CFUNC_P(p)) {"
+line_before /^\s*(mrb->stack\[0\] = p->body.func\(.+)/, nil, 1 do |d, m|
+  <<-EOP
+        int orgdisflg = mrb->compile_info.disable_jit;
+        mrb->compile_info.disable_jit = 1;
+        #{m[1]}
+        mrb->compile_info.disable_jit = orgdisflg;
+  EOP
+end
+
+line_after "  END_DISPATCH;", <<-EOP
+  mrb_bug("never reach here"); /* should never happen */
+
+L_DISPATCH:
+  gtptr = mrbjit_dispatch(mrb, &status);
+  i=*pc;
+  CODE_FETCH_HOOK(mrb, irep, pc, regs);
+  goto *gtptr;
+EOP

@@ -1,0 +1,39 @@
+line_before /#define MRB_SEGMENT_SIZE/, "#define MRB_SEGMENT_SIZE 32", 1
+
+line_after "typedef struct segment {", <<-EOP, 2
+  mrb_value val[MRB_SEGMENT_SIZE];
+  mrb_sym key[MRB_SEGMENT_SIZE];
+EOP
+
+search /^mrb_obj_iv_get/
+line_after "}", <<-EOP
+
+int
+mrbjit_iv_off(mrb_state *mrb, mrb_value obj, mrb_sym sym)
+{
+  iv_tbl *t;
+  segment *seg;
+  int i;
+
+  if (obj_iv_p(obj)) {
+    t =  mrb_obj_ptr(obj)->iv;
+  }
+  else {
+    return -1;
+  }
+  seg = t->rootseg;
+  for (i=0; i<MRB_SEGMENT_SIZE; i++) {
+    mrb_sym key = seg->key[i];
+
+    if (!seg->next && i >= t->last_len) {
+      return -1;
+    }
+    if (key == sym) {
+      return i;
+    }
+  }
+
+  /* JIT support only first segment */
+  return -1;
+}
+EOP

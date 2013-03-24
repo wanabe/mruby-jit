@@ -1,0 +1,8 @@
+line_before "void mrb_init_mrblib(mrb_state*);", "void mrb_init_irep(mrb_state*);\n"
+
+search /^mrb_init_core/
+line_before "}", <<-EOP
+#ifdef ENABLE_IREP
+  mrb_init_irep(mrb);
+#endif
+EOP

@@ -1,0 +1,13 @@
+line_before "  mrb_init_heap(mrb);", <<-EOP
+  mrb->compile_info.prev_pc = NULL;
+  mrb->compile_info.code_base = NULL;
+  mrb->compile_info.disable_jit = 0;
+  mrb->compile_info.nest_level = 0;
+
+EOP
+
+line_before "  mrb_free(mrb, irep);", <<-EOP
+  mrb_free(mrb, irep->prof_info);
+  mrb_free(mrb, irep->jit_entry_tab->body);
+  mrb_free(mrb, irep->jit_entry_tab);
+EOP
