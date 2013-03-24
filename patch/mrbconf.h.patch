@@ -1,0 +1,14 @@
+line_before /#define MRB_NAN_BOXING/, "#define MRB_NAN_BOXING", 1
+line_before /#define MRB_USE_IV_SEGLIST/, "#define MRB_USE_IV_SEGLIST", 1
+line_after /#define DISABLE_STDIO/, "//#define ENABLE_DEBUG    /* hooks for debugger */"
+
+line_before /#ifndef ENABLE_DEBUG/, <<-EOP
+#ifndef DISABLE_IREP
+#define ENABLE_IREP
+#endif
+EOP
+
+line_before /typedef _Bool mrb_bool;/, <<-EOP, 1
+//typedef _Bool mrb_bool;
+typedef unsigned int mrb_bool;
+EOP
