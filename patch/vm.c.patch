@@ -10,18 +10,33 @@ mrbjit_stack_extend(mrb_state *mrb, int room, int keep)
 }
 EOP
 
-search /^uvget/
+search /^uvenv\(/
 line_after "}", <<-EOP
+
+static mrb_value
+uvget(mrb_state *mrb, int up, int idx)
+{
+  struct REnv *e = uvenv(mrb, up);
+
+  if (!e) return mrb_nil_value();
+  return e->stack[idx];
+}
 
 mrb_value
 mrb_uvget(mrb_state *mrb, int up, int idx)
 {
   return uvget(mrb, up, idx);
 }
-EOP
 
-search /^uvset/
-line_after "}", <<-EOP
+static void
+uvset(mrb_state *mrb, int up, int idx, mrb_value v)
+{
+  struct REnv *e = uvenv(mrb, up);
+
+  if (!e) return;
+  e->stack[idx] = v;
+  mrb_write_barrier(mrb, (struct RBasic*)e);
+}
 
 void
 mrb_uvset(mrb_state *mrb, int up, int idx, mrb_value v)
