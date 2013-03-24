@@ -6,6 +6,7 @@ end
 patch_dir = "#{File.dirname(__FILE__)}/patch"
 
 MRuby.each_target do |target|
+  cxx.include_paths << "#{File.dirname(__FILE__)}/xbyak"
   patch "include/mruby.h", "#{patch_dir}/mruby.h.patch"
   patch "include/mruby/irep.h", "#{patch_dir}/irep.h.patch"
   patch "include/mruby/value.h", "#{patch_dir}/value.h.patch"
