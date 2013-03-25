@@ -1,15 +1,15 @@
-line_after /size \+= get_irep_header_size/, "  mrb_gc_arena_restore(mrb, 0);\n"
-line_after /size \+= get_iseq_block_size/, "  mrb_gc_arena_restore(mrb, 0);\n"
-line_after /size \+= get_pool_block_size/, "  mrb_gc_arena_restore(mrb, 0);\n"
-line_after /size \+= get_syms_block_size/, "  mrb_gc_arena_restore(mrb, 0);\n"
-line_after /buf \+= uint32_dump\(\(uint32_t\)irep->iseq/, "    mrb_gc_arena_restore(mrb, 0);\n"
+line_after /size \+= get_irep_header_size/, "  mrb_gc_arena_restore(mrb, 0);"
+line_after /size \+= get_iseq_block_size/, "  mrb_gc_arena_restore(mrb, 0);"
+line_after /size \+= get_pool_block_size/, "  mrb_gc_arena_restore(mrb, 0);"
+line_after /size \+= get_syms_block_size/, "  mrb_gc_arena_restore(mrb, 0);"
+line_after /buf \+= uint32_dump\(\(uint32_t\)irep->iseq/, "    mrb_gc_arena_restore(mrb, 0);"
 
 search /^write_irep_record/
 search /^\s*case DUMP_IREP_HEADER:/
-line_after /^\s*}$/, "    mrb_gc_arena_restore(mrb, 0);\n"
+line_after /^\s*}$/, "    mrb_gc_arena_restore(mrb, 0);"
 
 [/^mrb_write_irep/, /^mrb_dump_irep/].each do |reg|
   search reg
   m = search /^(\s*)for \(irep_no=top;/
-  line_before /^#{m[1]}}$/, "#{m[1]}  mrb_gc_arena_restore(mrb, 0);\n"
+  line_before /^#{m[1]}}$/, "#{m[1]}  mrb_gc_arena_restore(mrb, 0);"
 end

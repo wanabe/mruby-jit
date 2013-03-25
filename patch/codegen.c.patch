@@ -46,7 +46,7 @@ each_line /genop(_peep)?\(s, MKOP_ABC\(OP_(#{ops}),/ do |m|
 end
 
 search /^scope_finish/
-line_after '{', "int i;\n"
+line_after '{', "  int i;"
 line_before /^\s*irep->pool = /, <<-EOP
   irep->jit_entry_tab = (mrbjit_codetab *)mrb_malloc(mrb, sizeof(mrbjit_codetab)*s->pc);
   for (i = 0; i < s->pc; i++) {

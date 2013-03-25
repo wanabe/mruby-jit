@@ -1,4 +1,4 @@
-line_before "void mrb_init_mrblib(mrb_state*);", "void mrb_init_irep(mrb_state*);\n"
+line_before "void mrb_init_mrblib(mrb_state*);", "void mrb_init_irep(mrb_state*);"
 
 search /^mrb_init_core/
 line_before "}", <<-EOP
