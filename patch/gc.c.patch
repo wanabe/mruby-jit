@@ -1,2 +1,1 @@
-search /^obj_free/
-line_after "  case MRB_TT_FLOAT:", "  case MRB_TT_CACHE_VALUE:"
+search(/^obj_free/, "  case MRB_TT_FLOAT:", 1).insert "  case MRB_TT_CACHE_VALUE:"

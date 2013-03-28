@@ -1,6 +1,4 @@
-search /^new_lit\(/
-line_after '}', <<-EOP
-
+search(/^new_lit\(/, "}", "", 1).insert <<-EOP
 static inline int
 new_lit2(codegen_scope *s, mrb_value val)
 {
@@ -11,11 +9,10 @@ new_lit2(codegen_scope *s, mrb_value val)
   s->irep->pool[s->irep->plen] = val;
   return s->irep->plen++;
 }
+
 EOP
 
-search /^new_sym\(/
-line_after '}', <<-EOP
-
+search(/^new_sym\(/, "}", "", 1).insert <<-EOP
 static void
 genop_send(codegen_scope *s, mrb_code i)
 {
@@ -37,17 +34,18 @@ genop_send_peep(codegen_scope *s, mrb_code i, int val)
   new_lit2(s, mrb_fixnum_value(1));
   genop(s, MKOP_Bx(OP_NOP, off));
 }
+
 EOP
 
-ops = "SEND|SENDB|ADD|SUB|MUL|DIV|LT|LE|GT|GE|EQ|AREF|APOST|RANGE|ARRAY"
-ops << "|HASH"
-each_line /genop(_peep)?\(s, MKOP_ABC\(OP_(#{ops}),/ do |m|
-  "genop_send#{m[1]}(s, MKOP_ABC(OP_#{m[2]},"
+ops = "SEND|SENDB|ADD|SUB|MUL|DIV|LT|LE|GT|GE|EQ|AREF|APOST|RANGE|ARRAY|HASH"
+rest do
+  each do |l|
+    l.gsub! /genop((?:_peep)?\(s, MKOP_ABC\(OP_(?:#{ops}),.*)/, "genop_send\\1"
+  end
 end
 
-search /^scope_finish/
-line_after '{', "  int i;"
-line_before /^\s*irep->pool = /, <<-EOP
+search(/^scope_finish/, "{", 1).insert "  int i;"
+search(/^\s*irep->pool = /).insert <<-EOP
   irep->jit_entry_tab = (mrbjit_codetab *)mrb_malloc(mrb, sizeof(mrbjit_codetab)*s->pc);
   for (i = 0; i < s->pc; i++) {
     irep->jit_entry_tab[i].size = 2;

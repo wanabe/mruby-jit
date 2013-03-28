@@ -1,5 +1,4 @@
-line_after '#include "mruby/value.h"', <<-EOP
-
+search('#include "mruby/value.h"', "", 1).insert <<-EOP
 static inline mrb_value
 mrb_cache_value(void *p)
 {
@@ -9,11 +8,12 @@ mrb_cache_value(void *p)
 
   return v;
 }
+
 EOP
 
-line_before "} mrb_callinfo;", "  void *jit_entry;"
+search("} mrb_callinfo;").insert "  void *jit_entry;"
 
-line_before 'typedef struct mrb_state {', <<-EOP
+search('typedef struct mrb_state {').insert <<-EOP
 typedef void * mrbjit_code_area;
 typedef struct mrbjit_comp_info {
   mrb_code *prev_pc;
@@ -24,7 +24,7 @@ typedef struct mrbjit_comp_info {
 
 EOP
 
-line_before "} mrb_state;", <<-EOP
+search("} mrb_state;").insert <<-EOP
   mrb_int is_method_cache_used;
   mrbjit_comp_info compile_info; /* JIT stuff */
 EOP

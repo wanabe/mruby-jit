@@ -1,5 +1,5 @@
-search /^mrb_init_proc/
-line_after /call_irep->ilen = /, <<-EOP
+search /^mrb_init_proc/, /call_irep->ilen = /, 1
+insert <<-EOP
   call_irep->jit_entry_tab = (mrbjit_codetab *)mrb_alloca(mrb, sizeof(mrbjit_codetab)*1);
   call_irep->jit_entry_tab[0].size = 2;
   call_irep->jit_entry_tab[0].body = 

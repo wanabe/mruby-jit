@@ -1,1 +1,2 @@
-line_before /^mrb_value mrb_iv_get\(/, "int mrbjit_iv_off(mrb_state *mrb, mrb_value obj, mrb_sym sym);"
+search /^mrb_value mrb_iv_get\(/
+insert "int mrbjit_iv_off(mrb_state *mrb, mrb_value obj, mrb_sym sym);"
