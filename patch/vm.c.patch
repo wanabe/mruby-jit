@@ -352,11 +352,8 @@ search(/CASE\(OP_SEND\)/, "").insert <<-EOP
       struct RClass *orecv = pool[rcvoff].value.p;
 EOP
 search(/(\s*)m = mrb_method_search_vm\(/).insert "      if (c != orecv) {"
-search(:mark, /^#{match[1]}\}/).change do |lines|
-  lines.each do |l|
-    l.sub! /^      /, "\t"
-  end
-  false
+search(:mark, /^#{match[1]}\}/).each do |l|
+  l.sub! /^      /, "\t"
 end
 search(1).insert <<-EOP
 	else {
