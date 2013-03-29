@@ -1,14 +1,14 @@
-search(/#define MRB_NAN_BOXING/, :mark).change "#define MRB_NAN_BOXING"
-search(/#define MRB_USE_IV_SEGLIST/, :mark).change "#define MRB_USE_IV_SEGLIST"
-search(/#define DISABLE_STDIO/, 1).insert "//#define ENABLE_DEBUG    /* hooks for debugger */"
+seek(/#define MRB_NAN_BOXING/, :mark).change "#define MRB_NAN_BOXING"
+seek(/#define MRB_USE_IV_SEGLIST/, :mark).change "#define MRB_USE_IV_SEGLIST"
+seek(/#define DISABLE_STDIO/, 1).insert "//#define ENABLE_DEBUG    /* hooks for debugger */"
 
-search(/#ifndef ENABLE_DEBUG/).insert <<-EOP
+seek(/#ifndef ENABLE_DEBUG/).insert <<-EOP
 #ifndef DISABLE_IREP
 #define ENABLE_IREP
 #endif
 EOP
 
-search(/typedef _Bool mrb_bool;/, :mark).change <<-EOP
+seek(/typedef _Bool mrb_bool;/, :mark).change <<-EOP
 //typedef _Bool mrb_bool;
 typedef unsigned int mrb_bool;
 EOP

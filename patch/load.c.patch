@@ -1,4 +1,4 @@
-search /^read_rite_irep_record/, "  *len = src - recordStart;"
+seek /^read_rite_irep_record/, "  *len = src - recordStart;"
 insert <<-EOP
   // JIT Block
   irep->jit_entry_tab = (mrbjit_codetab *)mrb_calloc(mrb, 1, sizeof(mrbjit_codetab)*irep->ilen);

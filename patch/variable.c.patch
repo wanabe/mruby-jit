@@ -1,12 +1,12 @@
-search(/#define MRB_SEGMENT_SIZE/, :mark).change "#define MRB_SEGMENT_SIZE 32"
+seek(/#define MRB_SEGMENT_SIZE/, :mark).change "#define MRB_SEGMENT_SIZE 32"
 
-search("typedef struct segment {", /mrb_sym key/, :mark).search(/mrb_value val/)
+seek("typedef struct segment {", /mrb_sym key/, :mark, /mrb_value val/)
 change <<-EOP
   mrb_value val[MRB_SEGMENT_SIZE];
   mrb_sym key[MRB_SEGMENT_SIZE];
 EOP
 
-search(/^mrb_obj_iv_get/, "}", "", 1).insert <<-EOP
+seek(/^mrb_obj_iv_get/, "}", "", 1).insert <<-EOP
 int
 mrbjit_iv_off(mrb_state *mrb, mrb_value obj, mrb_sym sym)
 {

@@ -1,10 +1,10 @@
-search("#ifndef MRUBY_IREP_H", "", 1).insert <<-EOP
+seek("#ifndef MRUBY_IREP_H", "", 1).insert <<-EOP
 #include "jit.h"
 #include <setjmp.h>
 
 EOP
 
-search('} mrb_irep;').insert <<-EOP
+seek('} mrb_irep;').insert <<-EOP
 
   mrb_int is_method_cache_used;
 
@@ -13,7 +13,7 @@ search('} mrb_irep;').insert <<-EOP
   mrbjit_codetab *jit_entry_tab;
 EOP
 
-search('} mrb_irep;', "", 1).insert <<-EOP
+seek('} mrb_irep;', "", 1).insert <<-EOP
 typedef struct mrbjit_vmstatus {
   mrb_irep **irep;
   struct RProc **proc;

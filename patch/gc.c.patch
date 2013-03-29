@@ -1,1 +1,1 @@
-search(/^obj_free/, "  case MRB_TT_FLOAT:", 1).insert "  case MRB_TT_CACHE_VALUE:"
+seek(/^obj_free/, "  case MRB_TT_FLOAT:", 1).insert "  case MRB_TT_CACHE_VALUE:"

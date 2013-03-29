@@ -1,4 +1,4 @@
-search(/^new_lit\(/, "}", "", 1).insert <<-EOP
+seek(/^new_lit\(/, "}", "", 1).insert <<-EOP
 static inline int
 new_lit2(codegen_scope *s, mrb_value val)
 {
@@ -12,7 +12,7 @@ new_lit2(codegen_scope *s, mrb_value val)
 
 EOP
 
-search(/^new_sym\(/, "}", "", 1).insert <<-EOP
+seek(/^new_sym\(/, "}", "", 1).insert <<-EOP
 static void
 genop_send(codegen_scope *s, mrb_code i)
 {
@@ -44,8 +44,8 @@ rest do
   end
 end
 
-search(/^scope_finish/, "{", 1).insert "  int i;"
-search(/^\s*irep->pool = /).insert <<-EOP
+seek(/^scope_finish/, "{", 1).insert "  int i;"
+seek(/^\s*irep->pool = /).insert <<-EOP
   irep->jit_entry_tab = (mrbjit_codetab *)mrb_malloc(mrb, sizeof(mrbjit_codetab)*s->pc);
   for (i = 0; i < s->pc; i++) {
     irep->jit_entry_tab[i].size = 2;

@@ -1,4 +1,4 @@
-search("  mrb_init_heap(mrb);").insert <<-EOP
+seek("  mrb_init_heap(mrb);").insert <<-EOP
   mrb->compile_info.prev_pc = NULL;
   mrb->compile_info.code_base = NULL;
   mrb->compile_info.disable_jit = 0;
@@ -6,7 +6,7 @@ search("  mrb_init_heap(mrb);").insert <<-EOP
 
 EOP
 
-search("  mrb_free(mrb, irep);").insert <<-EOP
+seek("  mrb_free(mrb, irep);").insert <<-EOP
   mrb_free(mrb, irep->prof_info);
   mrb_free(mrb, irep->jit_entry_tab->body);
   mrb_free(mrb, irep->jit_entry_tab);

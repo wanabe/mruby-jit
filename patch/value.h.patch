@@ -1,5 +1,5 @@
 2.times do
-  search(/(\s*)(MRB_TT_MAXDEFINE[^0-9]+)([0-9]+)/, :mark).change <<-EOP
+  seek(/(\s*)(MRB_TT_MAXDEFINE[^0-9]+)([0-9]+)/, :mark).change <<-EOP
     MRB_TT_CACHE_VALUE, /*  #{c = match[3].to_i} */
     MRB_TT_MAXDEFINE    /*  #{c+1} */
   EOP

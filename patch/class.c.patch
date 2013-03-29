@@ -1,4 +1,4 @@
-search(/^mrb_define_method/, "}", "").insert <<-EOP
+seek(/^mrb_define_method/, "}", "").insert <<-EOP
 static void
 clear_method_cache(mrb_state *mrb)
 {
@@ -26,7 +26,7 @@ clear_method_cache(mrb_state *mrb)
 }
 EOP
 
-search(/^mrb_define_method_vm/, "", 1).insert <<-EOP
+seek(/^mrb_define_method_vm/, "", 1).insert <<-EOP
   if (mrb->is_method_cache_used) {
     clear_method_cache(mrb);
     mrb->is_method_cache_used = 0;

@@ -1,6 +1,6 @@
-search('#include "opcode.h"', 1).insert '#include "jit.h"'
+seek('#include "opcode.h"', 1).insert '#include "jit.h"'
 
-search(/^stack_extend/, "}", "", 1).insert <<-EOP
+seek(/^stack_extend/, "}", "", 1).insert <<-EOP
 void
 mrbjit_stack_extend(mrb_state *mrb, int room, int keep)
 {
@@ -9,7 +9,7 @@ mrbjit_stack_extend(mrb_state *mrb, int room, int keep)
 
 EOP
 
-search(/^uvenv\(/, "}", "", 1).insert <<-EOP
+seek(/^uvenv\(/, "}", "", 1).insert <<-EOP
 static mrb_value
 uvget(mrb_state *mrb, int up, int idx)
 {
@@ -43,7 +43,7 @@ mrb_uvset(mrb_state *mrb, int up, int idx, mrb_value v)
 
 EOP
 
-search(/^top_env/, "}", "", 1).insert <<-EOP
+seek(/^top_env/, "}", "", 1).insert <<-EOP
 struct REnv*
 mrbjit_top_env(mrb_state *mrb, struct RProc *proc)
 {
@@ -52,9 +52,9 @@ mrbjit_top_env(mrb_state *mrb, struct RProc *proc)
 
 EOP
 
-search /^cipush/, /mrb->ci->env = 0;/, 1
+seek /^cipush/, /mrb->ci->env = 0;/, 1
 insert "  mrb->ci->jit_entry = NULL;"
-search("}", 1).insert <<-EOP
+seek("}", 1).insert <<-EOP
 mrb_callinfo*
 mrbjit_cipush(mrb_state *mrb)
 {
@@ -63,7 +63,7 @@ mrbjit_cipush(mrb_state *mrb)
 
 EOP
 
-search(/^cipop/, "}", "", 1).insert <<-EOP
+seek(/^cipop/, "}", "", 1).insert <<-EOP
 void
 mrbjit_cipop(mrb_state *mrb)
 {
@@ -72,13 +72,13 @@ mrbjit_cipop(mrb_state *mrb)
 
 EOP
 
-search(/^ecall/, "").insert "  int orgdisflg = mrb->compile_info.disable_jit;"
-search(/^\s*(mrb_run\(.+)/, :mark).change <<-EOP
+seek(/^ecall/, "").insert "  int orgdisflg = mrb->compile_info.disable_jit;"
+seek(/^\s*(mrb_run\(.+)/, :mark).change <<-EOP
   mrb->compile_info.disable_jit = 1;
   #{match[1]}
   mrb->compile_info.disable_jit = orgdisflg;
 EOP
-search("}", "", 1).insert <<-EOP
+seek("}", "", 1).insert <<-EOP
 void
 mrbjit_ecall(mrb_state *mrb, int i)
 {
@@ -87,7 +87,7 @@ mrbjit_ecall(mrb_state *mrb, int i)
 
 EOP
 
-search /^mrb_funcall_with_block/, /^\s*(val = p->body.func\(.+)/, :mark
+seek /^mrb_funcall_with_block/, /^\s*(val = p->body.func\(.+)/, :mark
 change <<-EOP
       int orgdisflg = mrb->compile_info.disable_jit;
       mrb->compile_info.disable_jit = 1;
@@ -95,7 +95,7 @@ change <<-EOP
       mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search /^mrb_yield_internal/, /^\s*(val = p->body.func\(.+)/, :mark
+seek /^mrb_yield_internal/, /^\s*(val = p->body.func\(.+)/, :mark
 change <<-EOP
     int orgdisflg = mrb->compile_info.disable_jit;
     mrb->compile_info.disable_jit = 1;
@@ -103,9 +103,9 @@ change <<-EOP
     mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search("typedef enum {", :mark).search("").delete
+seek("typedef enum {", :mark, "").delete
 
-search(/^localjump_error/, "}", "", 1).insert <<-EOP
+seek(/^localjump_error/, "}", "", 1).insert <<-EOP
 void
 mrbjit_localjump_error(mrb_state *mrb, localjump_error_kind kind)
 {
@@ -114,7 +114,7 @@ mrbjit_localjump_error(mrb_state *mrb, localjump_error_kind kind)
 
 EOP
 
-search(/^argnum_error/, "}", "", 1).insert <<-'EOP'
+seek(/^argnum_error/, "}", "", 1).insert <<-'EOP'
 void
 mrbjit_argnum_error(mrb_state *mrb, int num)
 {
@@ -320,21 +320,21 @@ mrbjit_dispatch(mrb_state *mrb, mrbjit_vmstatus *status)
 
 EOP
 
-search(/#ifndef DIRECT_THREADED/, "", 1).insert <<-EOP
+seek(/#ifndef DIRECT_THREADED/, "", 1).insert <<-EOP
 /* You can not execute by JIT sorry... */
 EOP
 
-search("#else", /#define NEXT /, :mark).search(/#define JUMP/).change <<-EOP
+seek("#else", /#define NEXT /, :mark, /#define JUMP/).change <<-EOP
 #define NEXT ++pc;goto L_DISPATCH
 #define JUMP goto L_DISPATCH
 EOP
 
-search(/^mrb_run/, "", :mark).change <<-EOP
+seek(/^mrb_run/, "", :mark).change <<-EOP
   void *gtptr;			/* Use in NEXT/JUMP */
 
   mrb->compile_info.nest_level = 0;
 EOP
-search("#endif", :mark).change <<-EOP
+seek("#endif", :mark).change <<-EOP
 
   void *gototable[] = {
     &&L_RAISE, &&L_RETURN, &&L_RESCUE, &&L_SEND, &&L_STOP
@@ -346,16 +346,16 @@ search("#endif", :mark).change <<-EOP
   };
 EOP
 
-search(/CASE\(OP_SEND\)/, "").insert <<-EOP
+seek(/CASE\(OP_SEND\)/, "").insert <<-EOP
       int rcvoff = GETARG_Bx(*(pc + 1));
       int mthoff = rcvoff + 1;
       struct RClass *orecv = pool[rcvoff].value.p;
 EOP
-search(/(\s*)m = mrb_method_search_vm\(/).insert "      if (c != orecv) {"
-search(:mark, /^#{match[1]}\}/).each do |l|
+seek(/(\s*)m = mrb_method_search_vm\(/).insert "      if (c != orecv) {"
+seek(:mark, /^#{match[1]}\}/).each do |l|
   l.sub! /^      /, "\t"
 end
-search(1).insert <<-EOP
+seek(1).insert <<-EOP
 	else {
 	  mrb->is_method_cache_used = 1;
 	  irep->is_method_cache_used = 1;
@@ -368,47 +368,47 @@ search(1).insert <<-EOP
       }
 EOP
 
-search "      if (MRB_PROC_CFUNC_P(m)) {", 1
+seek "      if (MRB_PROC_CFUNC_P(m)) {", 1
 insert "        int orgdisflg = mrb->compile_info.disable_jit;"
-search(/^\s*(result = m->body.func\(.+)/, :mark).change <<-EOP
+seek(/^\s*(result = m->body.func\(.+)/, :mark).change <<-EOP
         mrb->compile_info.disable_jit = 1;
         #{match[1]}
         mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search "    CASE(OP_CALL) {", "      if (MRB_PROC_CFUNC_P(m)) {"
-search(/^\s*(recv = m->body.func\(.+)/, :mark).change <<-EOP
+seek "    CASE(OP_CALL) {", "      if (MRB_PROC_CFUNC_P(m)) {"
+seek(/^\s*(recv = m->body.func\(.+)/, :mark).change <<-EOP
         int orgdisflg = mrb->compile_info.disable_jit;
         mrb->compile_info.disable_jit = 1;
         #{match[1]}
         mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search "    CASE(OP_SUPER) {", "      if (MRB_PROC_CFUNC_P(m)) {"
-search(/^\s*(mrb->stack\[0\] = m->body.func\(.+)/, :mark).change <<-EOP
+seek "    CASE(OP_SUPER) {", "      if (MRB_PROC_CFUNC_P(m)) {"
+seek(/^\s*(mrb->stack\[0\] = m->body.func\(.+)/, :mark).change <<-EOP
         int orgdisflg = mrb->compile_info.disable_jit;
         mrb->compile_info.disable_jit = 1;
         #{match[1]}
         mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search "    CASE(OP_TAILCALL) {", "      if (MRB_PROC_CFUNC_P(m)) {"
-search(/^\s*(mrb->stack\[0\] = m->body.func\(.+)/, :mark).change <<-EOP
+seek "    CASE(OP_TAILCALL) {", "      if (MRB_PROC_CFUNC_P(m)) {"
+seek(/^\s*(mrb->stack\[0\] = m->body.func\(.+)/, :mark).change <<-EOP
         int orgdisflg = mrb->compile_info.disable_jit;
         mrb->compile_info.disable_jit = 1;
         #{match[1]}
         mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search "    CASE(OP_EXEC) {", "      if (MRB_PROC_CFUNC_P(p)) {"
-search(/^\s*(mrb->stack\[0\] = p->body.func\(.+)/, :mark).change <<-EOP
+seek "    CASE(OP_EXEC) {", "      if (MRB_PROC_CFUNC_P(p)) {"
+seek(/^\s*(mrb->stack\[0\] = p->body.func\(.+)/, :mark).change <<-EOP
         int orgdisflg = mrb->compile_info.disable_jit;
         mrb->compile_info.disable_jit = 1;
         #{match[1]}
         mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search("  END_DISPATCH;", 1).insert <<-EOP
+seek("  END_DISPATCH;", 1).insert <<-EOP
   mrb_bug("never reach here"); /* should never happen */
 
 L_DISPATCH:

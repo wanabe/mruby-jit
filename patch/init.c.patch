@@ -1,6 +1,6 @@
-search("void mrb_init_mrblib(mrb_state*);").insert "void mrb_init_irep(mrb_state*);"
+seek("void mrb_init_mrblib(mrb_state*);").insert "void mrb_init_irep(mrb_state*);"
 
-search(/^mrb_init_core/, "}").insert <<-EOP
+seek(/^mrb_init_core/, "}").insert <<-EOP
 #ifdef ENABLE_IREP
   mrb_init_irep(mrb);
 #endif

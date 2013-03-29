@@ -1,14 +1,14 @@
 [/(\s*)size \+= get_irep_header_size/, /(\s*)size \+= get_iseq_block_size/,
  /(\s*)size \+= get_pool_block_size/, /(\s*)size \+= get_syms_block_size/,
  /(\s*)buf \+= uint32_dump\(\(uint32_t\)irep->iseq/].each do |pattern|
-  search(pattern, 1).insert "#{match[1]}mrb_gc_arena_restore(mrb, 0);"
+  seek(pattern, 1).insert "#{match[1]}mrb_gc_arena_restore(mrb, 0);"
 end
 
-search /^write_irep_record/, /^\s*switch \(section\) \{/, /^\s*}$/, 1
+seek /^write_irep_record/, /^\s*switch \(section\) \{/, /^\s*}$/, 1
 insert "    mrb_gc_arena_restore(mrb, 0);"
 
 [/^mrb_write_irep/, /^mrb_dump_irep/].each do |reg|
-  search reg, /^(\s*)for \(irep_no=top;/
+  seek reg, /^(\s*)for \(irep_no=top;/
   indent = match[1]
-  search(/^#{indent}}$/).insert "#{indent}  mrb_gc_arena_restore(mrb, 0);"
+  seek(/^#{indent}}$/).insert "#{indent}  mrb_gc_arena_restore(mrb, 0);"
 end
