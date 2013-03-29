@@ -103,7 +103,7 @@ change <<-EOP
     mrb->compile_info.disable_jit = orgdisflg;
 EOP
 
-search("typedef enum {", :mark).search("").change nil
+search("typedef enum {", :mark).search("").delete
 
 search(/^localjump_error/, "}", "", 1).insert <<-EOP
 void
