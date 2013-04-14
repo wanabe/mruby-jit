@@ -184,4 +184,8 @@ MRuby.each_target do |target|
   end
   self.libmruby << coreobjs
   file libfile("#{build_dir}/lib/libmruby_core") => coreobjs
+
+  task :patch =>  patchs
 end
+
+task :default => :patch
