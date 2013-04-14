@@ -166,17 +166,11 @@ MRuby.each_target do |target|
   patchs << patch("src/vm.c", "#{patch_dir}/vm.c.patch")
   task :patch =>  patchs
 
-  coreobjs = Dir.glob("#{dir}/core/src/*.{c,cc,cpp,m,asm,S}").map do |f|
+  coreobjs = Dir.glob("#{dir}/core/src/*.{c,cc,cpp}").map do |f|
     o = objfile(f.relative_path_from(dir).to_s.pathmap("#{build_dir}/%X"))
-    case f[/[^.]*$/].intern
-    when :c
-      file o => f do |t|
-        cc.run t.name, t.prerequisites.first, [], ["#{build_dir}/src", "#{MRUBY_ROOT}/src"]
-      end
-    when :cpp, :cc
-      file o => f do |t|
-        cxx.run t.name, t.prerequisites.first, [], ["#{build_dir}/src", "#{MRUBY_ROOT}/src"]
-      end
+    compiler = {:c => cc, :cc => cxx, :cpp => cxx}[f[/[^.]*$/].intern]
+    file o => f do |t|
+      compiler.run t.name, t.prerequisites.first, [], ["#{build_dir}/src", "#{MRUBY_ROOT}/src"]
     end
     o
   end
