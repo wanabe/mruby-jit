@@ -112,9 +112,6 @@ module MRuby
   end # PatchTarget
 
   class Build
-    def libmruby_core
-      @libmruby_core ||= []
-    end
     def patchs
       @patchs ||= []
     end
@@ -185,6 +182,6 @@ MRuby.each_target do |target|
     end
     o
   end
-  self.libmruby_core << coreobjs
   self.libmruby << coreobjs
+  file libfile("#{build_dir}/lib/libmruby_core") => coreobjs
 end
