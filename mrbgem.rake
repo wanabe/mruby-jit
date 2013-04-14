@@ -150,6 +150,8 @@ MRuby.each_target do |target|
   linker.libraries << "stdc++"
   cxx.flags = cc.flags + %w(-fno-operator-names)
   cxx.include_paths << "#{File.dirname(__FILE__)}/xbyak"
+  cc.include_paths.unshift "#{build_dir}/include"
+  cxx.include_paths.unshift "#{build_dir}/include"
 
   patch "include/mruby.h", "#{patch_dir}/mruby.h.patch"
   patch "include/mrbconf.h", "#{patch_dir}/mrbconf.h.patch"
@@ -166,4 +168,5 @@ MRuby.each_target do |target|
   patch "src/state.c", "#{patch_dir}/state.c.patch"
   patch "src/variable.c", "#{patch_dir}/variable.c.patch"
   patch "src/vm.c", "#{patch_dir}/vm.c.patch"
+  self.libmruby << patchs
 end
