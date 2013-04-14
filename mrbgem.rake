@@ -145,13 +145,14 @@ module MRuby
 end # MRuby
 
 MRuby.each_target do |target|
+  dir = File.dirname(__FILE__)
   cc.flags << (ENV['CFLAGS'] || %w(-g -O3 -Wall -Werror-implicit-function-declaration -freg-struct-return -fomit-frame-pointer -m32))
   linker.flags << (ENV['LDFLAGS'] || %w(-lm -m32))
   linker.libraries << "stdc++"
   cxx.flags = cc.flags + %w(-fno-operator-names)
   cxx.include_paths << "#{File.dirname(__FILE__)}/xbyak"
-  cc.include_paths.unshift "#{build_dir}/include"
-  cxx.include_paths.unshift "#{build_dir}/include"
+  cc.include_paths.unshift "#{build_dir}/include", "#{dir}/include"
+  cxx.include_paths.unshift "#{build_dir}/include", "#{dir}/include"
 
   patch "include/mruby.h", "#{patch_dir}/mruby.h.patch"
   patch "include/mrbconf.h", "#{patch_dir}/mrbconf.h.patch"
@@ -170,7 +171,6 @@ MRuby.each_target do |target|
   patch "src/vm.c", "#{patch_dir}/vm.c.patch"
   self.libmruby << patchs
 
-  dir = File.dirname(__FILE__)
   coreobjs = Dir.glob("#{dir}/core/src/*.{c,cc,cpp,m,asm,S}").map do |f|
     o = objfile(f.relative_path_from(dir).to_s.pathmap("#{build_dir}/%X"))
     case f[/[^.]*$/].intern
