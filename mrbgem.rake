@@ -3,8 +3,6 @@ MRuby::Gem::Specification.new('mruby-jit') do |spec|
   spec.authors = 'mruby-jit developers'
 end
 
-patch_dir = "#{File.dirname(__FILE__)}/patch"
-
 module MRuby
   class PatchTarget
     @@table = {}
@@ -112,9 +110,6 @@ module MRuby
   end # PatchTarget
 
   class Build
-    def patchs
-      @patchs ||= []
-    end
     # usage:
     #
     #   patch "path/from/mruby/root", "path/to/patch"
@@ -129,44 +124,47 @@ module MRuby
       src = [src, patch] if patch
       patch = b if b
       task :patch => dst
-      patchs << dst
       file dst => src do |t|
         PatchTarget[t.prerequisites.first, t.name].apply(patch)
       end
-      return unless obj
-      file obj => dst do |t|
-        cc.run t.name, t.prerequisites.first, [], [dir]
+      if obj
+        file obj => dst do |t|
+          cc.run t.name, t.prerequisites.first, [], [dir]
+        end
       end
+      dst
     end
   end
 end # MRuby
 
 MRuby.each_target do |target|
   dir = File.dirname(__FILE__)
+  patch_dir = "#{dir}/patch"
   cc.flags << (ENV['CFLAGS'] || %w(-g -O3 -Wall -Werror-implicit-function-declaration -freg-struct-return -fomit-frame-pointer -m32))
   linker.flags << (ENV['LDFLAGS'] || %w(-lm -m32))
   linker.libraries << "stdc++"
   cxx.flags = cc.flags + %w(-fno-operator-names)
-  cxx.include_paths << "#{File.dirname(__FILE__)}/xbyak"
+  cxx.include_paths << "#{dir}/xbyak"
   cc.include_paths.unshift "#{build_dir}/include", "#{dir}/include"
   cxx.include_paths.unshift "#{build_dir}/include", "#{dir}/include"
 
-  patch "include/mruby.h", "#{patch_dir}/mruby.h.patch"
-  patch "include/mrbconf.h", "#{patch_dir}/mrbconf.h.patch"
-  patch "include/mruby/irep.h", "#{patch_dir}/irep.h.patch"
-  patch "include/mruby/value.h", "#{patch_dir}/value.h.patch"
-  patch "include/mruby/variable.h", "#{patch_dir}/variable.h.patch"
-  patch "src/class.c", "#{patch_dir}/class.c.patch"
-  patch "src/codegen.c", "#{patch_dir}/codegen.c.patch"
-  patch "src/dump.c", "#{patch_dir}/dump.c.patch"
-  patch "src/gc.c", "#{patch_dir}/gc.c.patch"
-  patch "src/init.c", "#{patch_dir}/init.c.patch"
-  patch "src/load.c", "#{patch_dir}/load.c.patch"
-  patch "src/proc.c", "#{patch_dir}/proc.c.patch"
-  patch "src/state.c", "#{patch_dir}/state.c.patch"
-  patch "src/variable.c", "#{patch_dir}/variable.c.patch"
-  patch "src/vm.c", "#{patch_dir}/vm.c.patch"
-  self.libmruby << patchs
+  patchs = []
+  patchs << patch("include/mruby.h", "#{patch_dir}/mruby.h.patch")
+  patchs << patch("include/mrbconf.h", "#{patch_dir}/mrbconf.h.patch")
+  patchs << patch("include/mruby/irep.h", "#{patch_dir}/irep.h.patch")
+  patchs << patch("include/mruby/value.h", "#{patch_dir}/value.h.patch")
+  patchs << patch("include/mruby/variable.h", "#{patch_dir}/variable.h.patch")
+  patchs << patch("src/class.c", "#{patch_dir}/class.c.patch")
+  patchs << patch("src/codegen.c", "#{patch_dir}/codegen.c.patch")
+  patchs << patch("src/dump.c", "#{patch_dir}/dump.c.patch")
+  patchs << patch("src/gc.c", "#{patch_dir}/gc.c.patch")
+  patchs << patch("src/init.c", "#{patch_dir}/init.c.patch")
+  patchs << patch("src/load.c", "#{patch_dir}/load.c.patch")
+  patchs << patch("src/proc.c", "#{patch_dir}/proc.c.patch")
+  patchs << patch("src/state.c", "#{patch_dir}/state.c.patch")
+  patchs << patch("src/variable.c", "#{patch_dir}/variable.c.patch")
+  patchs << patch("src/vm.c", "#{patch_dir}/vm.c.patch")
+  task :patch =>  patchs
 
   coreobjs = Dir.glob("#{dir}/core/src/*.{c,cc,cpp,m,asm,S}").map do |f|
     o = objfile(f.relative_path_from(dir).to_s.pathmap("#{build_dir}/%X"))
@@ -184,8 +182,6 @@ MRuby.each_target do |target|
   end
   self.libmruby << coreobjs
   file libfile("#{build_dir}/lib/libmruby_core") => coreobjs
-
-  task :patch =>  patchs
 end
 
 task :default => :patch
